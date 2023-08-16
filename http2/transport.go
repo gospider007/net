@@ -40,7 +40,7 @@ import (
 	"golang.org/x/net/idna"
 )
 
-func NewClientConn(c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*ClientConn, error) {
+func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*ClientConn, error) {
 	var headerTableSize uint32 = 65536
 	var maxHeaderListSize uint32 = 262144
 	var streamFlow uint32 = 6291456
@@ -80,6 +80,7 @@ func NewClientConn(c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*ClientConn, error) {
 	}
 	//开始创建客户端
 	return (&Transport{
+		closeCallBack:             closeCallBack,
 		h2Ja3Spec:                 h2Ja3Spec,
 		streamFlow:                streamFlow,
 		MaxDecoderHeaderTableSize: headerTableSize,   //1:initialHeaderTableSize,65536
@@ -112,8 +113,9 @@ const (
 // A Transport internally caches connections to servers. It is safe
 // for concurrent use by multiple goroutines.
 type Transport struct {
-	h2Ja3Spec  ja3.H2Ja3Spec
-	streamFlow uint32
+	closeCallBack func()
+	h2Ja3Spec     ja3.H2Ja3Spec
+	streamFlow    uint32
 	// DialTLSContext specifies an optional dial function with context for
 	// creating TLS connections for requests.
 	//
@@ -1060,6 +1062,9 @@ func (cc *ClientConn) onIdleTimeout() {
 }
 
 func (cc *ClientConn) closeConn() {
+	if cc.t.closeCallBack != nil {
+		defer cc.t.closeCallBack()
+	}
 	t := time.AfterFunc(250*time.Millisecond, cc.forceCloseConn)
 	defer t.Stop()
 	cc.tconn.Close()

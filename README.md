@@ -5,7 +5,7 @@ go 1.21.0
 # 修改指纹
 ## 添加函数
 ```go
-func NewClientConn(c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*http2ClientConn, error) {
+func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*ClientConn, error) {
 	var headerTableSize uint32 = 65536
 	var maxHeaderListSize uint32 = 262144
 	var streamFlow uint32 = 6291456
@@ -44,7 +44,8 @@ func NewClientConn(c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*http2ClientConn, error
 		h2Ja3Spec.ConnFlow = 15663105
 	}
 	//开始创建客户端
-	return (&http2Transport{
+	return (&Transport{
+		closeCallBack:             closeCallBack,
 		h2Ja3Spec:                 h2Ja3Spec,
 		streamFlow:                streamFlow,
 		MaxDecoderHeaderTableSize: headerTableSize,   //1:initialHeaderTableSize,65536
@@ -141,4 +142,9 @@ func NewClientConn(c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*http2ClientConn, error
 		}
 	}
 ```
-
+## 修改 closeConn() 函数 用来通知连接的健康，添加这行代码
+```go
+	if cc.t.closeCallBack != nil {
+		defer cc.t.closeCallBack()
+	}
+```
