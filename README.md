@@ -126,19 +126,14 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 		}
 ```
 # 添加ctx 以解决http2 代理转发无法及时同步导致的bug
+## Server 添加 CloseCallBack 方法  CloseCallBack func() bool
 ## 修改 serverConn 的  serve() 方法中的代码，将下面代码放到for 循环末尾
 ```go
 	for {
 			//源代码
 			//下面代码放到末尾
-		if !sc.inFrameScheduleLoop && !sc.inGoAway && !sc.needToSendGoAway && !sc.needToSendSettingsAck && !sc.needsFrameFlush && !sc.writingFrame {
-			if tconn, ok := sc.conn.(interface{ Ctx() context.Context }); ok {
-				select {
-				case <-tconn.Ctx().Done():
-					return
-				default:
-				}
-			}
+		if sc.srv.CloseCallBack != nil && !sc.inFrameScheduleLoop && !sc.inGoAway && !sc.needToSendGoAway && !sc.needToSendSettingsAck && !sc.needsFrameFlush && !sc.writingFrame && sc.srv.CloseCallBack() {
+			return
 		}
 	}
 ```

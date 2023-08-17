@@ -11,7 +11,7 @@ require (
 
 require (
 	gitee.com/baixudong/re v0.0.0-20230809033040-360c1d945e59 // indirect
-	gitee.com/baixudong/tools v0.0.0-20230816030611-f464d3a1d64d // indirect
+	gitee.com/baixudong/tools v0.0.0-20230817053057-332c92d681ff // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/gaukas/godicttls v0.0.4 // indirect
 	github.com/google/uuid v1.3.0 // indirect

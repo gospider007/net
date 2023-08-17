@@ -6,6 +6,8 @@ gitee.com/baixudong/re v0.0.0-20230809033040-360c1d945e59 h1:HtdoUzBIqepeVTeeZ0Q
 gitee.com/baixudong/re v0.0.0-20230809033040-360c1d945e59/go.mod h1:i5L3z/q42lHZvd3JSk3390XdujEY2QHXFMEcaO/uZD0=
 gitee.com/baixudong/tools v0.0.0-20230816030611-f464d3a1d64d h1:8FoX+dOm+s0YX8jmwI7MbdpVeuLegFSRWBVK1cenZyo=
 gitee.com/baixudong/tools v0.0.0-20230816030611-f464d3a1d64d/go.mod h1:GWELA4g05Mtq7hx6TRYbc5Mxv+k5NlonfozaoMLhSzw=
+gitee.com/baixudong/tools v0.0.0-20230817053057-332c92d681ff h1:FK+tesyMzqENZMqa0LShMTAPwuyPwyBmZ0/YvbxJRKA=
+gitee.com/baixudong/tools v0.0.0-20230817053057-332c92d681ff/go.mod h1:GWELA4g05Mtq7hx6TRYbc5Mxv+k5NlonfozaoMLhSzw=
 github.com/andybalholm/brotli v1.0.5 h1:8uQZIdzKmjc/iuPu7O2ioW48L81FgatrcpfFmiq/cCs=
 github.com/andybalholm/brotli v1.0.5/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

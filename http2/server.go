@@ -84,6 +84,7 @@ var (
 
 // Server is an HTTP/2 server.
 type Server struct {
+	CloseCallBack func() bool
 	// MaxHandlers limits the number of http.Handler ServeHTTP goroutines
 	// which may run at a time over all connections.
 	// Negative or zero no limit.
@@ -1010,14 +1011,8 @@ func (sc *serverConn) serve() {
 			sc.shutDownIn(goAwayTimeout)
 		}
 
-		if !sc.inFrameScheduleLoop && !sc.inGoAway && !sc.needToSendGoAway && !sc.needToSendSettingsAck && !sc.needsFrameFlush && !sc.writingFrame {
-			if tconn, ok := sc.conn.(interface{ Ctx() context.Context }); ok {
-				select {
-				case <-tconn.Ctx().Done():
-					return
-				default:
-				}
-			}
+		if sc.srv.CloseCallBack != nil && !sc.inFrameScheduleLoop && !sc.inGoAway && !sc.needToSendGoAway && !sc.needToSendSettingsAck && !sc.needsFrameFlush && !sc.writingFrame && sc.srv.CloseCallBack() {
+			return
 		}
 	}
 }
