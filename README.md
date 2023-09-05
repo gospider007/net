@@ -7,6 +7,12 @@ v0.14.0
 # 修改指纹
 ## 添加函数
 ```go
+type gospiderOption struct {
+	closeCallBack func()
+	h2Ja3Spec     ja3.H2Ja3Spec
+	streamFlow    uint32
+}
+
 func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*ClientConn, error) {
 	var headerTableSize uint32 = 65536
 	var maxHeaderListSize uint32 = 262144
@@ -47,9 +53,11 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 	}
 	//开始创建客户端
 	return (&Transport{
-		closeCallBack:             closeCallBack,
-		h2Ja3Spec:                 h2Ja3Spec,
-		streamFlow:                streamFlow,
+		gospiderOption: gospiderOption{
+			closeCallBack: closeCallBack,
+			h2Ja3Spec:     h2Ja3Spec,
+			streamFlow:    streamFlow,
+		},
 		MaxDecoderHeaderTableSize: headerTableSize,   //1:initialHeaderTableSize,65536
 		MaxEncoderHeaderTableSize: headerTableSize,   //1:initialHeaderTableSize,65536
 		MaxHeaderListSize:         maxHeaderListSize, //6:MaxHeaderListSize,262144
@@ -74,7 +82,7 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 
 		//结尾
 		ll := kinds.NewSet[string]()
-		for _, kk := range cc.t.h2Ja3Spec.OrderHeaders {
+		for _, kk := range cc.t.gospiderOption.gospiderOption.h2Ja3Spec.OrderHeaders {
 			for i := 0; i < 2; i++ {
 				if i == 1 {
 					kk = strings.Title(kk)
@@ -97,16 +105,22 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 		}
 	}
 ```
-## 修改 streamFlow 值,删除 常量 transportDefaultStreamFlow ,并替换为 Transport 中的 streamFlow
+## 修改 streamFlow 值,删除 常量 transportDefaultStreamFlow ,并替换为 Transport 中的 gospiderOption.streamFlow
 
 ## 修改 newClientConn 函数中的   initialSettings 和 WriteWindowUpdate
-### 删除常量 transportDefaultConnFlow ， transportDefaultConnFlow  替换为  t.h2Ja3Spec.ConnFlow
+### 删除常量 transportDefaultConnFlow ， transportDefaultConnFlow  替换为  t.gospiderOption.h2Ja3Spec.ConnFlow
 ### initialSettings 重新赋值
 ```go
-	initialSettings := make([]Setting, len(t.h2Ja3Spec.InitialSetting))
-	for i, setting := range t.h2Ja3Spec.InitialSetting {
+	initialSettings := make([]Setting, len(t.gospiderOption.h2Ja3Spec.InitialSetting))
+	for i, setting := range t.gospiderOption.h2Ja3Spec.InitialSetting {
 		initialSettings[i] = Setting{ID: SettingID(setting.Id), Val: setting.Val}
 	}
+
+	cc.bw.Write(clientPreface)
+	cc.fr.WriteSettings(initialSettings...)
+	cc.fr.WriteWindowUpdate(0, t.gospiderOption.h2Ja3Spec.ConnFlow)
+	cc.inflow.init(int32(t.gospiderOption.h2Ja3Spec.ConnFlow) + initialWindowSize)
+	cc.bw.Flush()
 ```
 ## 修改 ClientConn 的 writeHeaders 函数 的 first==true 时候的WriteHeaders 参数增加 Priority 值
 ```go
@@ -117,9 +131,9 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 				EndStream:     endStream,
 				EndHeaders:    endHeaders,
 				Priority: PriorityParam{
-					StreamDep: cc.t.h2Ja3Spec.Priority.StreamDep,
-					Exclusive: cc.t.h2Ja3Spec.Priority.Exclusive,
-					Weight:    cc.t.h2Ja3Spec.Priority.Weight,
+					StreamDep: cc.t.gospiderOption.h2Ja3Spec.Priority.StreamDep,
+					Exclusive: cc.t.gospiderOption.h2Ja3Spec.Priority.Exclusive,
+					Weight:    cc.t.gospiderOption.h2Ja3Spec.Priority.Weight,
 				},
 			})
 			first = false
@@ -141,7 +155,7 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 ```
 ## 修改 closeConn() 函数 用来通知连接的健康，添加这行代码
 ```go
-	if cc.t.closeCallBack != nil {
-		defer cc.t.closeCallBack()
+	if cc.t.gospiderOption.closeCallBack != nil {
+		defer cc.t.gospiderOption.closeCallBack()
 	}
 ```

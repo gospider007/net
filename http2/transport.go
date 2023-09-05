@@ -40,6 +40,12 @@ import (
 	"golang.org/x/net/idna"
 )
 
+type gospiderOption struct {
+	closeCallBack func()
+	h2Ja3Spec     ja3.H2Ja3Spec
+	streamFlow    uint32
+}
+
 func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*ClientConn, error) {
 	var headerTableSize uint32 = 65536
 	var maxHeaderListSize uint32 = 262144
@@ -80,9 +86,11 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 	}
 	//开始创建客户端
 	return (&Transport{
-		closeCallBack:             closeCallBack,
-		h2Ja3Spec:                 h2Ja3Spec,
-		streamFlow:                streamFlow,
+		gospiderOption: gospiderOption{
+			closeCallBack: closeCallBack,
+			h2Ja3Spec:     h2Ja3Spec,
+			streamFlow:    streamFlow,
+		},
 		MaxDecoderHeaderTableSize: headerTableSize,   //1:initialHeaderTableSize,65536
 		MaxEncoderHeaderTableSize: headerTableSize,   //1:initialHeaderTableSize,65536
 		MaxHeaderListSize:         maxHeaderListSize, //6:MaxHeaderListSize,262144
@@ -113,9 +121,7 @@ const (
 // A Transport internally caches connections to servers. It is safe
 // for concurrent use by multiple goroutines.
 type Transport struct {
-	closeCallBack func()
-	h2Ja3Spec     ja3.H2Ja3Spec
-	streamFlow    uint32
+	gospiderOption gospiderOption
 	// DialTLSContext specifies an optional dial function with context for
 	// creating TLS connections for requests.
 	//
@@ -859,15 +865,15 @@ func (t *Transport) newClientConn(c net.Conn, singleUse bool) (*ClientConn, erro
 	// 	initialSettings = append(initialSettings, Setting{ID: SettingHeaderTableSize, Val: maxHeaderTableSize})
 	// }
 
-	initialSettings := make([]Setting, len(t.h2Ja3Spec.InitialSetting))
-	for i, setting := range t.h2Ja3Spec.InitialSetting {
+	initialSettings := make([]Setting, len(t.gospiderOption.h2Ja3Spec.InitialSetting))
+	for i, setting := range t.gospiderOption.h2Ja3Spec.InitialSetting {
 		initialSettings[i] = Setting{ID: SettingID(setting.Id), Val: setting.Val}
 	}
 
 	cc.bw.Write(clientPreface)
 	cc.fr.WriteSettings(initialSettings...)
-	cc.fr.WriteWindowUpdate(0, t.h2Ja3Spec.ConnFlow)
-	cc.inflow.init(int32(t.h2Ja3Spec.ConnFlow) + initialWindowSize)
+	cc.fr.WriteWindowUpdate(0, t.gospiderOption.h2Ja3Spec.ConnFlow)
+	cc.inflow.init(int32(t.gospiderOption.h2Ja3Spec.ConnFlow) + initialWindowSize)
 	cc.bw.Flush()
 	if cc.werr != nil {
 		cc.Close()
@@ -1062,8 +1068,8 @@ func (cc *ClientConn) onIdleTimeout() {
 }
 
 func (cc *ClientConn) closeConn() {
-	if cc.t.closeCallBack != nil {
-		defer cc.t.closeCallBack()
+	if cc.t.gospiderOption.closeCallBack != nil {
+		defer cc.t.gospiderOption.closeCallBack()
 	}
 	t := time.AfterFunc(250*time.Millisecond, cc.forceCloseConn)
 	defer t.Stop()
@@ -1695,9 +1701,9 @@ func (cc *ClientConn) writeHeaders(streamID uint32, endStream bool, maxFrameSize
 				EndStream:     endStream,
 				EndHeaders:    endHeaders,
 				Priority: PriorityParam{
-					StreamDep: cc.t.h2Ja3Spec.Priority.StreamDep,
-					Exclusive: cc.t.h2Ja3Spec.Priority.Exclusive,
-					Weight:    cc.t.h2Ja3Spec.Priority.Weight,
+					StreamDep: cc.t.gospiderOption.h2Ja3Spec.Priority.StreamDep,
+					Exclusive: cc.t.gospiderOption.h2Ja3Spec.Priority.Exclusive,
+					Weight:    cc.t.gospiderOption.h2Ja3Spec.Priority.Weight,
 				},
 			})
 			first = false
@@ -2084,7 +2090,7 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 		}
 
 		ll := kinds.NewSet[string]()
-		for _, kk := range cc.t.h2Ja3Spec.OrderHeaders {
+		for _, kk := range cc.t.gospiderOption.h2Ja3Spec.OrderHeaders {
 			for i := 0; i < 2; i++ {
 				if i == 1 {
 					kk = strings.Title(kk)
@@ -2211,7 +2217,7 @@ type resAndError struct {
 func (cc *ClientConn) addStreamLocked(cs *clientStream) {
 	cs.flow.add(int32(cc.initialWindowSize))
 	cs.flow.setConnFlow(&cc.flow)
-	cs.inflow.init(int32(cc.t.streamFlow))
+	cs.inflow.init(int32(cc.t.gospiderOption.streamFlow))
 	cs.ID = cc.nextStreamID
 	cc.nextStreamID += 2
 	cc.streams[cs.ID] = cs
