@@ -33,11 +33,32 @@ import (
 	"sync/atomic"
 	"time"
 
-	"gitee.com/baixudong/ja3"
-	"gitee.com/baixudong/kinds"
+	"github.com/gospider007/ja3"
+	"github.com/gospider007/kinds"
 	"golang.org/x/net/http/httpguts"
 	"golang.org/x/net/http2/hpack"
 	"golang.org/x/net/idna"
+)
+
+const (
+	// transportDefaultConnFlow is how many connection-level flow control
+	// tokens we give the server at start-up, past the default 64k.
+	// transportDefaultConnFlow = 1 << 30
+
+	// t.gospiderOption.streamFlow is how many stream-level flow
+	// control tokens we announce to the peer, and how many bytes
+	// we buffer per stream.
+
+	defaultUserAgent = "Go-http-client/2.0"
+
+	// initialMaxConcurrentStreams is a connections maxConcurrentStreams until
+	// it's received servers initial SETTINGS frame, which corresponds with the
+	// spec's minimum recommended value.
+	initialMaxConcurrentStreams = 100
+
+	// defaultMaxConcurrentStreams is a connections default maxConcurrentStreams
+	// if the server doesn't include one in its initial SETTINGS frame.
+	defaultMaxConcurrentStreams = 1000
 )
 
 type gospiderOption struct {
@@ -96,25 +117,6 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 		MaxHeaderListSize:         maxHeaderListSize, //6:MaxHeaderListSize,262144
 	}).NewClientConn(c)
 }
-
-const (
-	// transportDefaultConnFlow is how many connection-level flow control
-	// tokens we give the server at start-up, past the default 64k.
-	// transportDefaultStreamFlow is how many stream-level flow
-	// control tokens we announce to the peer, and how many bytes
-	// we buffer per stream.
-
-	defaultUserAgent = "Go-http-client/2.0"
-
-	// initialMaxConcurrentStreams is a connections maxConcurrentStreams until
-	// it's received servers initial SETTINGS frame, which corresponds with the
-	// spec's minimum recommended value.
-	initialMaxConcurrentStreams = 100
-
-	// defaultMaxConcurrentStreams is a connections default maxConcurrentStreams
-	// if the server doesn't include one in its initial SETTINGS frame.
-	defaultMaxConcurrentStreams = 1000
-)
 
 // Transport is an HTTP/2 Transport.
 //
@@ -348,8 +350,7 @@ func (t *Transport) initConnPool() {
 // HTTP/2 server.
 type ClientConn struct {
 	t             *Transport
-	tconn         net.Conn // usually *tls.Conn, except specialized impls
-	tconnClosed   bool
+	tconn         net.Conn             // usually *tls.Conn, except specialized impls
 	tlsState      *tls.ConnectionState // nil only for specialized impls
 	reused        uint32               // whether conn is being reused; atomic
 	singleUse     bool                 // whether being used for a single http.Request
@@ -851,9 +852,10 @@ func (t *Transport) newClientConn(c net.Conn, singleUse bool) (*ClientConn, erro
 		state := cs.ConnectionState()
 		cc.tlsState = &state
 	}
+
 	// initialSettings := []Setting{
 	// 	{ID: SettingEnablePush, Val: 0},
-	// 	{ID: SettingInitialWindowSize, Val: t.streamFlow},
+	// 	{ID: SettingInitialWindowSize, Val: t.gospiderOption.streamFlow},
 	// }
 	// if max := t.maxFrameReadSize(); max != 0 {
 	// 	initialSettings = append(initialSettings, Setting{ID: SettingMaxFrameSize, Val: max})
@@ -864,17 +866,21 @@ func (t *Transport) newClientConn(c net.Conn, singleUse bool) (*ClientConn, erro
 	// if maxHeaderTableSize != initialHeaderTableSize {
 	// 	initialSettings = append(initialSettings, Setting{ID: SettingHeaderTableSize, Val: maxHeaderTableSize})
 	// }
-
 	initialSettings := make([]Setting, len(t.gospiderOption.h2Ja3Spec.InitialSetting))
 	for i, setting := range t.gospiderOption.h2Ja3Spec.InitialSetting {
 		initialSettings[i] = Setting{ID: SettingID(setting.Id), Val: setting.Val}
 	}
-
 	cc.bw.Write(clientPreface)
 	cc.fr.WriteSettings(initialSettings...)
 	cc.fr.WriteWindowUpdate(0, t.gospiderOption.h2Ja3Spec.ConnFlow)
 	cc.inflow.init(int32(t.gospiderOption.h2Ja3Spec.ConnFlow) + initialWindowSize)
 	cc.bw.Flush()
+
+	// cc.bw.Write(clientPreface)
+	// cc.fr.WriteSettings(initialSettings...)
+	// cc.fr.WriteWindowUpdate(0, transportDefaultConnFlow)
+	// cc.inflow.init(transportDefaultConnFlow + initialWindowSize)
+	// cc.bw.Flush()
 	if cc.werr != nil {
 		cc.Close()
 		return nil, cc.werr
@@ -2088,7 +2094,6 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 		if !didUA {
 			f("user-agent", defaultUserAgent)
 		}
-
 		ll := kinds.NewSet[string]()
 		for _, kk := range cc.t.gospiderOption.h2Ja3Spec.OrderHeaders {
 			for i := 0; i < 2; i++ {
