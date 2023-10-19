@@ -38,6 +38,8 @@ import (
 	"golang.org/x/net/http/httpguts"
 	"golang.org/x/net/http2/hpack"
 	"golang.org/x/net/idna"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -102,6 +104,13 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 	if h2Ja3Spec.OrderHeaders == nil {
 		h2Ja3Spec.OrderHeaders = []string{":method", ":authority", ":scheme", ":path"}
 	}
+	orderHeaders := []string{}
+	for _, val := range h2Ja3Spec.OrderHeaders {
+		orderHeaders = append(orderHeaders, val)
+		orderHeaders = append(orderHeaders, cases.Title(language.Und, cases.NoLower).String(val))
+	}
+	h2Ja3Spec.OrderHeaders = orderHeaders
+
 	if h2Ja3Spec.ConnFlow == 0 {
 		h2Ja3Spec.ConnFlow = 15663105
 	}
@@ -2096,17 +2105,12 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 		}
 		ll := kinds.NewSet[string]()
 		for _, kk := range cc.t.gospiderOption.h2Ja3Spec.OrderHeaders {
-			for i := 0; i < 2; i++ {
-				if i == 1 {
-					kk = strings.Title(kk)
+			if vvs, ok := headers[kk]; ok {
+				ll.Add(kk)
+				for _, vv := range vvs {
+					f2(kk, vv)
 				}
-				if vvs, ok := headers[kk]; ok {
-					ll.Add(kk)
-					for _, vv := range vvs {
-						f2(kk, vv)
-					}
-					break
-				}
+				break
 			}
 		}
 		for kk, vvs := range headers {
