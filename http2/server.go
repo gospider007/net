@@ -1015,6 +1015,7 @@ func (sc *serverConn) serve() {
 		if sentGoAway && sc.shutdownTimer == nil && (sc.goAwayCode != ErrCodeNo || gracefulShutdownComplete) {
 			sc.shutDownIn(goAwayTimeout)
 		}
+
 		if sc.srv.CloseCallBack != nil && !sc.inFrameScheduleLoop && !sc.inGoAway && !sc.needToSendGoAway && !sc.needToSendSettingsAck && !sc.needsFrameFlush && !sc.writingFrame && sc.srv.CloseCallBack() {
 			return
 		}

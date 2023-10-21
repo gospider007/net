@@ -26,6 +26,7 @@ import (
 	"net/http/httptrace"
 	"net/textproto"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,33 +35,9 @@ import (
 	"time"
 
 	"github.com/gospider007/ja3"
-	"github.com/gospider007/kinds"
 	"golang.org/x/net/http/httpguts"
 	"golang.org/x/net/http2/hpack"
 	"golang.org/x/net/idna"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
-)
-
-const (
-	// transportDefaultConnFlow is how many connection-level flow control
-	// tokens we give the server at start-up, past the default 64k.
-	// transportDefaultConnFlow = 1 << 30
-
-	// t.gospiderOption.streamFlow is how many stream-level flow
-	// control tokens we announce to the peer, and how many bytes
-	// we buffer per stream.
-
-	defaultUserAgent = "Go-http-client/2.0"
-
-	// initialMaxConcurrentStreams is a connections maxConcurrentStreams until
-	// it's received servers initial SETTINGS frame, which corresponds with the
-	// spec's minimum recommended value.
-	initialMaxConcurrentStreams = 100
-
-	// defaultMaxConcurrentStreams is a connections default maxConcurrentStreams
-	// if the server doesn't include one in its initial SETTINGS frame.
-	defaultMaxConcurrentStreams = 1000
 )
 
 type gospiderOption struct {
@@ -106,8 +83,10 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 	}
 	orderHeaders := []string{}
 	for _, val := range h2Ja3Spec.OrderHeaders {
-		orderHeaders = append(orderHeaders, val)
-		orderHeaders = append(orderHeaders, cases.Title(language.Und, cases.NoLower).String(val))
+		val = strings.ToLower(val)
+		if !slices.Contains(orderHeaders, val) {
+			orderHeaders = append(orderHeaders, val)
+		}
 	}
 	h2Ja3Spec.OrderHeaders = orderHeaders
 
@@ -126,6 +105,26 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 		MaxHeaderListSize:         maxHeaderListSize, //6:MaxHeaderListSize,262144
 	}).NewClientConn(c)
 }
+
+const (
+	// transportDefaultConnFlow is how many connection-level flow control
+	// tokens we give the server at start-up, past the default 64k.
+
+	// transportDefaultStreamFlow is how many stream-level flow
+	// control tokens we announce to the peer, and how many bytes
+	// we buffer per stream.
+
+	defaultUserAgent = "Go-http-client/2.0"
+
+	// initialMaxConcurrentStreams is a connections maxConcurrentStreams until
+	// it's received servers initial SETTINGS frame, which corresponds with the
+	// spec's minimum recommended value.
+	initialMaxConcurrentStreams = 100
+
+	// defaultMaxConcurrentStreams is a connections default maxConcurrentStreams
+	// if the server doesn't include one in its initial SETTINGS frame.
+	defaultMaxConcurrentStreams = 1000
+)
 
 // Transport is an HTTP/2 Transport.
 //
@@ -862,34 +861,17 @@ func (t *Transport) newClientConn(c net.Conn, singleUse bool) (*ClientConn, erro
 		cc.tlsState = &state
 	}
 
-	// initialSettings := []Setting{
-	// 	{ID: SettingEnablePush, Val: 0},
-	// 	{ID: SettingInitialWindowSize, Val: t.gospiderOption.streamFlow},
-	// }
-	// if max := t.maxFrameReadSize(); max != 0 {
-	// 	initialSettings = append(initialSettings, Setting{ID: SettingMaxFrameSize, Val: max})
-	// }
-	// if max := t.maxHeaderListSize(); max != 0 {
-	// 	initialSettings = append(initialSettings, Setting{ID: SettingMaxHeaderListSize, Val: max})
-	// }
-	// if maxHeaderTableSize != initialHeaderTableSize {
-	// 	initialSettings = append(initialSettings, Setting{ID: SettingHeaderTableSize, Val: maxHeaderTableSize})
-	// }
 	initialSettings := make([]Setting, len(t.gospiderOption.h2Ja3Spec.InitialSetting))
 	for i, setting := range t.gospiderOption.h2Ja3Spec.InitialSetting {
 		initialSettings[i] = Setting{ID: SettingID(setting.Id), Val: setting.Val}
 	}
+
 	cc.bw.Write(clientPreface)
 	cc.fr.WriteSettings(initialSettings...)
 	cc.fr.WriteWindowUpdate(0, t.gospiderOption.h2Ja3Spec.ConnFlow)
 	cc.inflow.init(int32(t.gospiderOption.h2Ja3Spec.ConnFlow) + initialWindowSize)
 	cc.bw.Flush()
 
-	// cc.bw.Write(clientPreface)
-	// cc.fr.WriteSettings(initialSettings...)
-	// cc.fr.WriteWindowUpdate(0, transportDefaultConnFlow)
-	// cc.inflow.init(transportDefaultConnFlow + initialWindowSize)
-	// cc.bw.Flush()
 	if cc.werr != nil {
 		cc.Close()
 		return nil, cc.werr
@@ -2012,10 +1994,15 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 		}
 	}
 
-	enumerateHeaders := func(f2 func(name, value string)) {
-		headers := http.Header{}
+	enumerateHeaders := func(replaceF func(name, value string)) {
+		gospiderHeaders := map[string][]string{}
 		f := func(name, value string) {
-			headers.Add(name, value)
+			name = strings.ToLower(name)
+			if _, ok := gospiderHeaders[name]; ok {
+				gospiderHeaders[name] = append(gospiderHeaders[name], value)
+			} else {
+				gospiderHeaders[name] = []string{value}
+			}
 		}
 		// 8.1.2.3 Request Pseudo-Header Fields
 		// The :path pseudo-header field includes the path and query parts of the
@@ -2103,20 +2090,20 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 		if !didUA {
 			f("user-agent", defaultUserAgent)
 		}
-		ll := kinds.NewSet[string]()
+
+		kks := []string{}
 		for _, kk := range cc.t.gospiderOption.h2Ja3Spec.OrderHeaders {
-			if vvs, ok := headers[kk]; ok {
-				ll.Add(kk)
+			if vvs, ok := gospiderHeaders[kk]; ok {
+				kks = append(kks, kk)
 				for _, vv := range vvs {
-					f2(kk, vv)
+					replaceF(kk, vv)
 				}
-				break
 			}
 		}
-		for kk, vvs := range headers {
-			for _, vv := range vvs {
-				if !ll.Has(kk) {
-					f2(kk, vv)
+		for kk, vvs := range gospiderHeaders {
+			if !slices.Contains(kks, kk) {
+				for _, vv := range vvs {
+					replaceF(kk, vv)
 				}
 			}
 		}
