@@ -1548,7 +1548,7 @@ func (sc *serverConn) processFrame(f Frame) error {
 			for _, header := range f.Fields {
 				headerKeys = append(headerKeys, header.Name)
 			}
-			fpCtxData.SetOrderHeaders(headerKeys)
+			fpCtxData.SetH2OrderHeaders(headerKeys)
 			fpCtxData.SetPriority(ja3.Priority(f.Priority))
 		}
 		return sc.processHeaders(f)
