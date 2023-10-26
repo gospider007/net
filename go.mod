@@ -3,7 +3,7 @@ module github.com/gospider007/net
 go 1.21.3
 
 require (
-	github.com/gospider007/ja3 v0.0.0-20231024093217-2de3491f0fe3
+	github.com/gospider007/ja3 v0.0.0-20231026095227-07c8d888e973
 	golang.org/x/net v0.17.0
 	golang.org/x/term v0.13.0
 )
@@ -15,14 +15,14 @@ require (
 	github.com/gaukas/godicttls v0.0.4 // indirect
 	github.com/gospider007/gtls v0.0.0-20231024092712-01193b9f0404 // indirect
 	github.com/gospider007/kinds v0.0.0-20231024093643-7a4424f2d30e // indirect
-	github.com/gospider007/re v0.0.0-20231015023348-717c984874af // indirect
-	github.com/gospider007/tools v0.0.0-20231015122431-2acd695704d6 // indirect
+	github.com/gospider007/re v0.0.0-20231024115818-adfd03636256 // indirect
+	github.com/gospider007/tools v0.0.0-20231024115950-be51fa815fcd // indirect
 	github.com/klauspost/compress v1.17.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/libdns/libdns v0.2.1 // indirect
 	github.com/mholt/acmez v1.2.0 // indirect
 	github.com/miekg/dns v1.1.56 // indirect
-	github.com/quic-go/quic-go v0.39.1 // indirect
+	github.com/quic-go/quic-go v0.39.2 // indirect
 	github.com/refraction-networking/utls v1.5.4 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
