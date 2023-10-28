@@ -79,7 +79,7 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 		}
 	}
 	if h2Ja3Spec.OrderHeaders == nil {
-		h2Ja3Spec.OrderHeaders = []string{":method", ":authority", ":scheme", ":path"}
+		h2Ja3Spec.OrderHeaders = ja3.DefaultH2OrderHeaders()
 	}
 	orderHeaders := []string{}
 	for _, val := range h2Ja3Spec.OrderHeaders {
@@ -2091,17 +2091,15 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 			f("user-agent", defaultUserAgent)
 		}
 
-		kks := []string{}
 		for _, kk := range cc.t.gospiderOption.h2Ja3Spec.OrderHeaders {
 			if vvs, ok := gospiderHeaders[kk]; ok {
-				kks = append(kks, kk)
 				for _, vv := range vvs {
 					replaceF(kk, vv)
 				}
 			}
 		}
 		for kk, vvs := range gospiderHeaders {
-			if !slices.Contains(kks, kk) {
+			if !slices.Contains(cc.t.gospiderOption.h2Ja3Spec.OrderHeaders, kk) {
 				for _, vv := range vvs {
 					replaceF(kk, vv)
 				}
