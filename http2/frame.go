@@ -285,7 +285,7 @@ type Framer struct {
 	getReadBuf func(size uint32) []byte
 	readBuf    []byte // cache for default getReadBuf
 
-	maxWriteSize uint32 // zero means unlimited; TODO: implement
+	// maxWriteSize uint32 // zero means unlimited; TODO: implement
 
 	w    io.Writer
 	wbuf []byte
@@ -1406,9 +1406,9 @@ func readUint32(p []byte) (remain []byte, v uint32, err error) {
 	return p[4:], binary.BigEndian.Uint32(p[:4]), nil
 }
 
-type streamEnder interface {
-	StreamEnded() bool
-}
+// type streamEnder interface {
+// 	StreamEnded() bool
+// }
 
 type headersEnder interface {
 	HeadersEnded() bool

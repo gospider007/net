@@ -51,16 +51,16 @@ type testBlockedGoroutine struct {
 	ch chan struct{} // closed when unblocked
 }
 
-func newTestSyncHooks() *testSyncHooks {
-	h := &testSyncHooks{
-		active:   make(chan struct{}, 1),
-		inactive: make(chan struct{}, 1),
-		condwait: map[*sync.Cond]int{},
-	}
-	h.inactive <- struct{}{}
-	h.now = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
-	return h
-}
+// func newTestSyncHooks() *testSyncHooks {
+// 	h := &testSyncHooks{
+// 		active:   make(chan struct{}, 1),
+// 		inactive: make(chan struct{}, 1),
+// 		condwait: map[*sync.Cond]int{},
+// 	}
+// 	h.inactive <- struct{}{}
+// 	h.now = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+// 	return h
+// }
 
 // lock acquires the testSyncHooks mutex.
 func (h *testSyncHooks) lock() {
@@ -71,14 +71,14 @@ func (h *testSyncHooks) lock() {
 }
 
 // waitInactive waits for all goroutines to become inactive.
-func (h *testSyncHooks) waitInactive() {
-	for {
-		<-h.inactive
-		if !h.unlock() {
-			break
-		}
-	}
-}
+// func (h *testSyncHooks) waitInactive() {
+// 	for {
+// 		<-h.inactive
+// 		if !h.unlock() {
+// 			break
+// 		}
+// 	}
+// }
 
 // unlock releases the testSyncHooks mutex.
 // It reports whether any goroutines are active.
@@ -186,26 +186,26 @@ func (h *testSyncHooks) newTimer(d time.Duration) timer {
 }
 
 // advance advances time and causes synthetic timers to fire.
-func (h *testSyncHooks) advance(d time.Duration) {
-	h.lock()
-	defer h.unlock()
-	h.now = h.now.Add(d)
-	timers := h.timers[:0]
-	for _, t := range h.timers {
-		t.mu.Lock()
-		switch {
-		case t.when.After(h.now):
-			timers = append(timers, t)
-		case t.when.IsZero():
-			// stopped timer
-		default:
-			t.when = time.Time{}
-			close(t.c)
-		}
-		t.mu.Unlock()
-	}
-	h.timers = timers
-}
+// func (h *testSyncHooks) advance(d time.Duration) {
+// 	h.lock()
+// 	defer h.unlock()
+// 	h.now = h.now.Add(d)
+// 	timers := h.timers[:0]
+// 	for _, t := range h.timers {
+// 		t.mu.Lock()
+// 		switch {
+// 		case t.when.After(h.now):
+// 			timers = append(timers, t)
+// 		case t.when.IsZero():
+// 			// stopped timer
+// 		default:
+// 			t.when = time.Time{}
+// 			close(t.c)
+// 		}
+// 		t.mu.Unlock()
+// 	}
+// 	h.timers = timers
+// }
 
 // A timer wraps a time.Timer, or a synthetic equivalent in tests.
 // Unlike time.Timer, timer is single-use: The timer channel is closed when the timer expires.

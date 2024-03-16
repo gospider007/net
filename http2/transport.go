@@ -1829,7 +1829,7 @@ var (
 	errStopReqBodyWrite = errors.New("http2: aborting request body write")
 
 	// abort request body write, but send stream reset of cancel.
-	errStopReqBodyWriteAndCancel = errors.New("http2: canceling request")
+	// errStopReqBodyWriteAndCancel = errors.New("http2: canceling request")
 
 	errReqBodyTooLong = errors.New("http2: request body larger than specified content length")
 )
@@ -3311,9 +3311,9 @@ func (gz *gzipReader) Close() error {
 	return nil
 }
 
-type errorReader struct{ err error }
+// type errorReader struct{ err error }
 
-func (r errorReader) Read(p []byte) (int, error) { return 0, r.err }
+// func (r errorReader) Read(p []byte) (int, error) { return 0, r.err }
 
 // isConnectionCloseRequest reports whether req should use its own
 // connection for a single request and then close the connection.
