@@ -109,10 +109,12 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 const (
 	// transportDefaultConnFlow is how many connection-level flow control
 	// tokens we give the server at start-up, past the default 64k.
+	// transportDefaultConnFlow = 1 << 30
 
 	// transportDefaultStreamFlow is how many stream-level flow
 	// control tokens we announce to the peer, and how many bytes
 	// we buffer per stream.
+	// transportDefaultStreamFlow = 4 << 20
 
 	defaultUserAgent = "Go-http-client/2.0"
 
@@ -910,20 +912,25 @@ func (t *Transport) newClientConn(c net.Conn, singleUse bool, hooks *testSyncHoo
 		cc.tlsState = &state
 	}
 
+	// initialSettings := []Setting{
+	// 	{ID: SettingEnablePush, Val: 0},
+	// 	{ID: SettingInitialWindowSize, Val: cc.t.gospiderOption.streamFlow},
+	// }
 	initialSettings := make([]Setting, len(t.gospiderOption.h2Ja3Spec.InitialSetting))
 	for i, setting := range t.gospiderOption.h2Ja3Spec.InitialSetting {
 		initialSettings[i] = Setting{ID: SettingID(setting.Id), Val: setting.Val}
 	}
 
-	if max := t.maxFrameReadSize(); max != 0 {
-		initialSettings = append(initialSettings, Setting{ID: SettingMaxFrameSize, Val: max})
-	}
-	if max := t.maxHeaderListSize(); max != 0 {
-		initialSettings = append(initialSettings, Setting{ID: SettingMaxHeaderListSize, Val: max})
-	}
-	if maxHeaderTableSize != initialHeaderTableSize {
-		initialSettings = append(initialSettings, Setting{ID: SettingHeaderTableSize, Val: maxHeaderTableSize})
-	}
+	// if max := t.maxFrameReadSize(); max != 0 {
+	// 	initialSettings = append(initialSettings, Setting{ID: SettingMaxFrameSize, Val: max})
+	// }
+	// if max := t.maxHeaderListSize(); max != 0 {
+	// 	initialSettings = append(initialSettings, Setting{ID: SettingMaxHeaderListSize, Val: max})
+	// }
+	// if maxHeaderTableSize != initialHeaderTableSize {
+	// 	initialSettings = append(initialSettings, Setting{ID: SettingHeaderTableSize, Val: maxHeaderTableSize})
+	// }
+
 	cc.bw.Write(clientPreface)
 	cc.fr.WriteSettings(initialSettings...)
 	cc.fr.WriteWindowUpdate(0, cc.t.gospiderOption.h2Ja3Spec.ConnFlow)
@@ -1829,7 +1836,7 @@ var (
 	errStopReqBodyWrite = errors.New("http2: aborting request body write")
 
 	// abort request body write, but send stream reset of cancel.
-	// errStopReqBodyWriteAndCancel = errors.New("http2: canceling request")
+	errStopReqBodyWriteAndCancel = errors.New("http2: canceling request")
 
 	errReqBodyTooLong = errors.New("http2: request body larger than specified content length")
 )
@@ -2106,16 +2113,16 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 	}
 
 	enumerateHeaders := func(replaceF func(name, value string)) {
-		gospiderHeaders := map[string][]string{}
-		f := func(name, value string) {
-			name = strings.ToLower(name)
-			gospiderHeaders[name] = append(gospiderHeaders[name], value)
-		}
 		// 8.1.2.3 Request Pseudo-Header Fields
 		// The :path pseudo-header field includes the path and query parts of the
 		// target URI (the path-absolute production and optionally a '?' character
 		// followed by the query production, see Sections 3.3 and 3.4 of
 		// [RFC3986]).
+		gospiderHeaders := map[string][]string{}
+		f := func(name, value string) {
+			name = strings.ToLower(name)
+			gospiderHeaders[name] = append(gospiderHeaders[name], value)
+		}
 		f(":authority", host)
 		m := req.Method
 		if m == "" {
@@ -3311,9 +3318,9 @@ func (gz *gzipReader) Close() error {
 	return nil
 }
 
-// type errorReader struct{ err error }
+type errorReader struct{ err error }
 
-// func (r errorReader) Read(p []byte) (int, error) { return 0, r.err }
+func (r errorReader) Read(p []byte) (int, error) { return 0, r.err }
 
 // isConnectionCloseRequest reports whether req should use its own
 // connection for a single request and then close the connection.

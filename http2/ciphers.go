@@ -160,7 +160,7 @@ const (
 	// Unassigned uint16 =  0x00C6-FE
 	cipher_TLS_EMPTY_RENEGOTIATION_INFO_SCSV uint16 = 0x00FF
 	// Unassigned uint16 =  0x01-55,*
-	// cipher_TLS_FALLBACK_SCSV uint16 = 0x5600
+	cipher_TLS_FALLBACK_SCSV uint16 = 0x5600
 	// Unassigned                                   uint16 = 0x5601 - 0xC000
 	cipher_TLS_ECDH_ECDSA_WITH_NULL_SHA                 uint16 = 0xC001
 	cipher_TLS_ECDH_ECDSA_WITH_RC4_128_SHA              uint16 = 0xC002
@@ -340,13 +340,13 @@ const (
 	// Unassigned uint16 =  0xC0B0-FF
 	// Unassigned uint16 =  0xC1-CB,*
 	// Unassigned uint16 =  0xCC00-A7
-	// cipher_TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256   uint16 = 0xCCA8
-	// cipher_TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 uint16 = 0xCCA9
-	// cipher_TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256     uint16 = 0xCCAA
-	// cipher_TLS_PSK_WITH_CHACHA20_POLY1305_SHA256         uint16 = 0xCCAB
-	// cipher_TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256   uint16 = 0xCCAC
-	// cipher_TLS_DHE_PSK_WITH_CHACHA20_POLY1305_SHA256     uint16 = 0xCCAD
-	// cipher_TLS_RSA_PSK_WITH_CHACHA20_POLY1305_SHA256     uint16 = 0xCCAE
+	cipher_TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256   uint16 = 0xCCA8
+	cipher_TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 uint16 = 0xCCA9
+	cipher_TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256     uint16 = 0xCCAA
+	cipher_TLS_PSK_WITH_CHACHA20_POLY1305_SHA256         uint16 = 0xCCAB
+	cipher_TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256   uint16 = 0xCCAC
+	cipher_TLS_DHE_PSK_WITH_CHACHA20_POLY1305_SHA256     uint16 = 0xCCAD
+	cipher_TLS_RSA_PSK_WITH_CHACHA20_POLY1305_SHA256     uint16 = 0xCCAE
 )
 
 // isBadCipher reports whether the cipher is blacklisted by the HTTP/2 spec.
