@@ -78,14 +78,26 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 			Weight:    255,
 		}
 	}
-	if h2Ja3Spec.OrderHeaders == nil {
-		h2Ja3Spec.OrderHeaders = ja3.DefaultH2OrderHeaders()
-	}
 	orderHeaders := []string{}
-	for _, val := range h2Ja3Spec.OrderHeaders {
-		val = strings.ToLower(val)
-		if !slices.Contains(orderHeaders, val) {
-			orderHeaders = append(orderHeaders, val)
+	if h2Ja3Spec.OrderHeaders == nil {
+		for _, val := range ja3.DefaultOrderHeaders() {
+			val = strings.ToLower(val)
+			if !slices.Contains(orderHeaders, val) {
+				orderHeaders = append(orderHeaders, val)
+			}
+		}
+	} else {
+		for _, val := range h2Ja3Spec.OrderHeaders {
+			val = strings.ToLower(val)
+			if !slices.Contains(orderHeaders, val) {
+				orderHeaders = append(orderHeaders, val)
+			}
+		}
+		kks := ja3.DefaultOrderHeadersWithH2()
+		for i := len(kks) - 1; i >= 0; i-- {
+			if !slices.Contains(orderHeaders, kks[i]) {
+				orderHeaders = slices.Insert(orderHeaders, 0, kks[i])
+			}
 		}
 	}
 	h2Ja3Spec.OrderHeaders = orderHeaders
