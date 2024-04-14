@@ -41,12 +41,39 @@ import (
 )
 
 type gospiderOption struct {
-	closeCallBack func()
-	h2Ja3Spec     ja3.H2Ja3Spec
-	streamFlow    uint32
+	closeCallBack     func()
+	h2Ja3Spec         ja3.H2Ja3Spec
+	streamFlow        uint32
+	headerTableSize   uint32
+	maxHeaderListSize uint32
 }
 
-func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*ClientConn, error) {
+func clearOrderHeaders(headers []string) []string {
+	orderHeaders := []string{}
+	if len(headers) == 0 {
+		for _, val := range ja3.DefaultOrderHeaders() {
+			val = strings.ToLower(val)
+			if !slices.Contains(orderHeaders, val) {
+				orderHeaders = append(orderHeaders, val)
+			}
+		}
+	} else {
+		for _, val := range headers {
+			val = strings.ToLower(val)
+			if !slices.Contains(orderHeaders, val) {
+				orderHeaders = append(orderHeaders, val)
+			}
+		}
+		kks := ja3.DefaultOrderHeadersWithH2()
+		for i := len(kks) - 1; i >= 0; i-- {
+			if !slices.Contains(orderHeaders, kks[i]) {
+				orderHeaders = slices.Insert(orderHeaders, 0, kks[i])
+			}
+		}
+	}
+	return orderHeaders
+}
+func spec2option(h2Ja3Spec ja3.H2Ja3Spec) gospiderOption {
 	var headerTableSize uint32 = 65536
 	var maxHeaderListSize uint32 = 262144
 	var streamFlow uint32 = 6291456
@@ -78,44 +105,30 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*
 			Weight:    255,
 		}
 	}
-	orderHeaders := []string{}
-	if h2Ja3Spec.OrderHeaders == nil {
-		for _, val := range ja3.DefaultOrderHeaders() {
-			val = strings.ToLower(val)
-			if !slices.Contains(orderHeaders, val) {
-				orderHeaders = append(orderHeaders, val)
-			}
-		}
-	} else {
-		for _, val := range h2Ja3Spec.OrderHeaders {
-			val = strings.ToLower(val)
-			if !slices.Contains(orderHeaders, val) {
-				orderHeaders = append(orderHeaders, val)
-			}
-		}
-		kks := ja3.DefaultOrderHeadersWithH2()
-		for i := len(kks) - 1; i >= 0; i-- {
-			if !slices.Contains(orderHeaders, kks[i]) {
-				orderHeaders = slices.Insert(orderHeaders, 0, kks[i])
-			}
-		}
-	}
-	h2Ja3Spec.OrderHeaders = orderHeaders
-
+	h2Ja3Spec.OrderHeaders = clearOrderHeaders(h2Ja3Spec.OrderHeaders)
 	if h2Ja3Spec.ConnFlow == 0 {
 		h2Ja3Spec.ConnFlow = 15663105
 	}
+	return gospiderOption{
+		h2Ja3Spec:         h2Ja3Spec,
+		streamFlow:        streamFlow,
+		headerTableSize:   headerTableSize,
+		maxHeaderListSize: maxHeaderListSize,
+	}
+}
+func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*ClientConn, error) {
+	option := spec2option(h2Ja3Spec)
 	//开始创建客户端
 	return (&Transport{
-		gospiderOption: gospiderOption{
-			closeCallBack: closeCallBack,
-			h2Ja3Spec:     h2Ja3Spec,
-			streamFlow:    streamFlow,
-		},
-		MaxDecoderHeaderTableSize: headerTableSize,   //1:initialHeaderTableSize,65536
-		MaxEncoderHeaderTableSize: headerTableSize,   //1:initialHeaderTableSize,65536
-		MaxHeaderListSize:         maxHeaderListSize, //6:MaxHeaderListSize,262144
+		gospiderOption:            option,
+		MaxDecoderHeaderTableSize: option.headerTableSize,   //1:initialHeaderTableSize,65536
+		MaxEncoderHeaderTableSize: option.headerTableSize,   //1:initialHeaderTableSize,65536
+		MaxHeaderListSize:         option.maxHeaderListSize, //6:MaxHeaderListSize,262144
 	}).NewClientConn(c)
+}
+func (cc *ClientConn) RoundTripWithOrderHeaders(req *http.Request, orderHeaders []string) (*http.Response, error) {
+	cc.t.gospiderOption.h2Ja3Spec.OrderHeaders = clearOrderHeaders(orderHeaders)
+	return cc.roundTrip(req, nil)
 }
 
 const (
@@ -2080,7 +2093,6 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 	if req.URL == nil {
 		return nil, errNilRequestURL
 	}
-
 	host := req.Host
 	if host == "" {
 		host = req.URL.Host
