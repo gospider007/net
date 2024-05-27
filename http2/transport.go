@@ -980,11 +980,11 @@ func (t *Transport) newClientConn(c net.Conn, singleUse bool, hooks *testSyncHoo
 	for i, setting := range t.gospiderOption.h2Ja3Spec.InitialSetting {
 		initialSettings[i] = Setting{ID: SettingID(setting.Id), Val: setting.Val}
 	}
-	cc.bw.Write(clientPreface)
-	cc.fr.WriteSettings(initialSettings...)
-	cc.fr.WriteWindowUpdate(0, cc.t.gospiderOption.h2Ja3Spec.ConnFlow)
-	cc.inflow.init(int32(cc.t.gospiderOption.h2Ja3Spec.ConnFlow) + initialWindowSize)
-	cc.bw.Flush()
+	// cc.bw.Write(clientPreface)
+	// cc.fr.WriteSettings(initialSettings...)
+	// cc.fr.WriteWindowUpdate(0, cc.t.gospiderOption.h2Ja3Spec.ConnFlow)
+	// cc.inflow.init(int32(cc.t.gospiderOption.h2Ja3Spec.ConnFlow) + initialWindowSize)
+	// cc.bw.Flush()
 
 	cc.bw.Write(clientPreface)
 	cc.fr.WriteSettings(initialSettings...)
