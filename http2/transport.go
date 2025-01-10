@@ -64,7 +64,7 @@ const (
 
 type gospiderOption struct {
 	closeCallBack     func()
-	h2Ja3Spec         ja3.H2Ja3Spec
+	h2Ja3Spec         ja3.H2Spec
 	streamFlow        uint32
 	headerTableSize   uint32
 	maxHeaderListSize uint32
@@ -95,7 +95,7 @@ func clearOrderHeaders(headers []string) []string {
 	}
 	return orderHeaders
 }
-func spec2option(h2Ja3Spec ja3.H2Ja3Spec) gospiderOption {
+func spec2option(h2Ja3Spec ja3.H2Spec) gospiderOption {
 	var headerTableSize uint32 = 65536
 	var maxHeaderListSize uint32 = 262144
 	var streamFlow uint32 = 6291456
@@ -138,7 +138,7 @@ func spec2option(h2Ja3Spec ja3.H2Ja3Spec) gospiderOption {
 		maxHeaderListSize: maxHeaderListSize,
 	}
 }
-func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Ja3Spec) (*ClientConn, error) {
+func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.H2Spec) (*ClientConn, error) {
 	option := spec2option(h2Ja3Spec)
 	//开始创建客户端
 	return (&Transport{
