@@ -1535,7 +1535,7 @@ func (sc *serverConn) processFrame(f Frame) error {
 				for i := 0; i < f.NumSettings(); i++ {
 					setting := f.Setting(i)
 					settings = append(settings, ja3.Setting{
-						Id:  uint16(setting.ID),
+						Id:  ja3.Http2SettingID(setting.ID),
 						Val: setting.Val,
 					})
 				}
