@@ -26,7 +26,6 @@ import (
 	"net/http/httptrace"
 	"net/textproto"
 	"os"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -70,31 +69,6 @@ type gospiderOption struct {
 	maxHeaderListSize uint32
 }
 
-func clearOrderHeaders(headers []string) []string {
-	orderHeaders := []string{}
-	if len(headers) == 0 {
-		for _, val := range ja3.DefaultOrderHeaders() {
-			val = strings.ToLower(val)
-			if !slices.Contains(orderHeaders, val) {
-				orderHeaders = append(orderHeaders, val)
-			}
-		}
-	} else {
-		for _, val := range headers {
-			val = strings.ToLower(val)
-			if !slices.Contains(orderHeaders, val) {
-				orderHeaders = append(orderHeaders, val)
-			}
-		}
-		kks := ja3.DefaultOrderHeadersWithH2()
-		for i := len(kks) - 1; i >= 0; i-- {
-			if !slices.Contains(orderHeaders, kks[i]) {
-				orderHeaders = slices.Insert(orderHeaders, 0, kks[i])
-			}
-		}
-	}
-	return orderHeaders
-}
 func spec2option(h2Ja3Spec ja3.HSpec) gospiderOption {
 	var headerTableSize uint32 = 65536
 	var maxHeaderListSize uint32 = 262144
@@ -127,7 +101,6 @@ func spec2option(h2Ja3Spec ja3.HSpec) gospiderOption {
 			Weight:    255,
 		}
 	}
-	h2Ja3Spec.OrderHeaders = clearOrderHeaders(h2Ja3Spec.OrderHeaders)
 	if h2Ja3Spec.ConnFlow == 0 {
 		h2Ja3Spec.ConnFlow = 15663105
 	}
@@ -149,7 +122,6 @@ func NewClientConn(closeCallBack func(), c net.Conn, h2Ja3Spec ja3.HSpec) (*Clie
 	}).NewClientConn(c)
 }
 func (cc *ClientConn) RoundTripWithOrderHeaders(req *http.Request, orderHeaders []string) (*http.Response, error) {
-	cc.t.gospiderOption.h2Ja3Spec.OrderHeaders = clearOrderHeaders(orderHeaders)
 	return cc.roundTrip(req, nil)
 }
 
@@ -2299,20 +2271,6 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 			f("user-agent", defaultUserAgent)
 		}
 
-		for _, kk := range cc.t.gospiderOption.h2Ja3Spec.OrderHeaders {
-			if vvs, ok := gospiderHeaders[kk]; ok {
-				for _, vv := range vvs {
-					replaceF(kk, vv)
-				}
-			}
-		}
-		for kk, vvs := range gospiderHeaders {
-			if !slices.Contains(cc.t.gospiderOption.h2Ja3Spec.OrderHeaders, kk) {
-				for _, vv := range vvs {
-					replaceF(kk, vv)
-				}
-			}
-		}
 	}
 
 	// Do a first pass over the headers counting bytes to ensure
